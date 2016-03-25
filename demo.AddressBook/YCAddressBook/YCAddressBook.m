@@ -8,7 +8,13 @@
 
 #import "YCAddressBook.h"
 #import "YCContact.h"
-
+#define SuppressPerformSelectorLeakWarning(Stuff) \
+do { \
+_Pragma("clang diagnostic push") \
+_Pragma("clang diagnostic ignored \"-Warc-performSelector-leaks\"") \
+Stuff; \
+_Pragma("clang diagnostic pop") \
+} while (0)
 @implementation YCAddressBook
 
 -(id)initWithTarget:(id)target{
@@ -37,45 +43,48 @@
     return nil;
 }
 
--(NSArray *)getAllContact:(^(){})
+-(void)getAllContactSelector:(SEL)aSelector
 {
     ABAddressBookRef *addressBookRef =  ABAddressBookCreate();
     NSArray *contacts = [[NSArray alloc] init];
     
     if (ABAddressBookGetAuthorizationStatus() == kABAuthorizationStatusNotDetermined) {
         ABAddressBookRequestAccessWithCompletion(addressBookRef, ^(bool granted, CFErrorRef error){
-            
+            NSLog(@"1");
             CFErrorRef *error1 = NULL;
             ABAddressBookRef addressBook = ABAddressBookCreateWithOptions(NULL, error1);
-           self.contacts = [self copyAddressBook:addressBook];
+            SuppressPerformSelectorLeakWarning(
+                                               [self.target performSelector:aSelector withObject:[self copyAddressBook:addressBook]];
+                                               );
         });
     }
     else if (ABAddressBookGetAuthorizationStatus() == kABAuthorizationStatusAuthorized){
-        
+        NSLog(@"2");
         CFErrorRef *error = NULL;
         ABAddressBookRef addressBook = ABAddressBookCreateWithOptions(NULL, error);
         contacts = [self copyAddressBook:addressBook];
+        SuppressPerformSelectorLeakWarning(
+                                           [self.target performSelector:aSelector withObject:contacts];
+                                           );
+        
     }
     else {
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//            // 更新界面
-//            //            [hud turnToError:@"没有获取通讯录权限"];
-//            NSLog(@"没有获取通讯录权限");
-//        });
-        contacts = nil;
+        NSLog(@"3");
+        SuppressPerformSelectorLeakWarning(
+                                           [self.target performSelector:aSelector withObject:nil];
+                                           );
     }
-    return contacts;
 }
 
 
-#pragma mark -- 
+#pragma mark --
 - (NSArray*)copyAddressBook:(ABAddressBookRef)addressBook
 {
     CFIndex numberOfPeople = ABAddressBookGetPersonCount(addressBook);
     CFArrayRef people = ABAddressBookCopyArrayOfAllPeople(addressBook);
     NSMutableArray *contacts = [[NSMutableArray alloc] initWithCapacity:numberOfPeople];
     
-    NSLog(@"该手机共有联系人：%ld",numberOfPeople);
+//    NSLog(@"该手机共有联系人：%ld",numberOfPeople);
     for ( int i = 0; i < numberOfPeople; i++){
         ABRecordRef person = CFArrayGetValueAtIndex(people, i);
         YCContact *contact = [[YCContact alloc] initWithABRecordRef:person];

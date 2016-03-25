@@ -48,12 +48,11 @@
 -(ABRecordRef*)getContact;
 
 /**
- *  获取通讯录
+ *   *  获取所有联系人后执行aSelector动作
  *
- *  @return 包含联系人ABRecordRef的数组
+ *  @param aSelector 获取联系人数组后执行的动作
+ *
  */
--(NSArray*)getAllContact;
-
-+(ABRecordRef *)getContactWithDelegate:(UIViewController*)target;
+-(void)getAllContactSelector:(SEL)aSelector;
 
 @end
